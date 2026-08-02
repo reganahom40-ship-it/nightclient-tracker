@@ -4,15 +4,14 @@ RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
-COPY server/package.json ./
-RUN npm install --omit=dev
+COPY server/ ./server/
+RUN cd server && npm install --omit=dev
 
-COPY server/server.js ./
-COPY dashboard ./dashboard
+COPY dashboard/ ./dashboard/
 
 ENV NODE_ENV=production
 ENV PORT=8080
 
 EXPOSE 8080
 
-CMD ["node", "server.js"]
+CMD ["node", "server/server.js"]
