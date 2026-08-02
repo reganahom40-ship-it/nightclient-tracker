@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: nightclient-tracker
+    runtime: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /api/stats
+    envVars:
+      - key: NODE_ENV
+        value: production

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Night Client Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #080012;
+      color: #f0e8f8;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #0a0016;
+      border-right: 1px solid #1a0828;
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-brand {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid #1a0828;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-brand .logo-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #9D5CFF;
+      box-shadow: 0 0 12px #9D5CFF66, 0 0 24px #9D5CFF33;
+      animation: pulse 2s infinite;
+    }
+
+    .sidebar-brand span {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #fff, #9D5CFF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.9); }
+    }
+
+    .sidebar-nav {
+      padding: 16px 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: #605080;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-item:hover { color: #a090c0; background: #12002080; }
+    .nav-item.active { background: #1a082880; color: #9D5CFF; }
+    .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .sidebar-stats {
+      padding: 16px 16px 20px;
+      border-top: 1px solid #1a0828;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .mini-stat { text-align: center; padding: 10px; background: #0a0016; border-radius: 8px; border: 1px solid #1a0828; }
+    .mini-stat .num { font-size: 20px; font-weight: 700; }
+    .mini-stat .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #504068; margin-top: 2px; }
+    .mini-stat.online .num { color: #9D5CFF; }
+    .mini-stat.offline .num { color: #483860; }
+    .mini-stat.total .num { color: #c8a0ff; }
+
+    .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+    .topbar {
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid #1a0828;
+      background: #0a0016;
+    }
+
+    .topbar h2 { font-size: 18px; font-weight: 600; color: #fff; }
+    .topbar h2 span { color: #605080; font-weight: 400; }
+
+    .search-box {
+      margin-left: auto;
+      background: #0e001a;
+      border: 1px solid #2a1040;
+      border-radius: 8px;
+      padding: 9px 16px;
+      color: #f0e8f8;
+      font-size: 13px;
+      width: 220px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-box:focus { border-color: #9D5CFF; }
+    .search-box::placeholder { color: #403050; }
+
+    .filter-group { display: flex; gap: 4px; background: #0e001a; border-radius: 8px; padding: 3px; border: 1px solid #2a1040; }
+
+    .filter-btn {
+      padding: 6px 14px; border-radius: 6px; border: none; background: transparent;
+      color: #605080; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .filter-btn:hover { color: #a090c0; }
+    .filter-btn.active { background: #9D5CFF; color: #fff; }
+
+    .refresh-btn {
+      background: transparent; border: 1px solid #2a1040; border-radius: 8px; padding: 8px 14px;
+      color: #605080; font-size: 12px; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .refresh-btn:hover { border-color: #9D5CFF; color: #9D5CFF; }
+    .refresh-btn svg { width: 14px; height: 14px; }
+
+    .content { padding: 24px 28px; flex: 1; overflow-y: auto; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+
+    .stat-card {
+      background: linear-gradient(135deg, #0a0016, #0e001a);
+      border: 1px solid #1a0828;
+      border-radius: 12px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .stat-card.online::before { background: #9D5CFF; box-shadow: 0 0 12px #9D5CFF66; }
+    .stat-card.offline::before { background: #483860; }
+    .stat-card.total::before { background: #c8a0ff; }
+    .stat-card.sessions::before { background: #6840B0; }
+
+    .stat-card .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #504068; margin-bottom: 6px; }
+    .stat-card .stat-value { font-size: 32px; font-weight: 700; }
+    .stat-card.online .stat-value { color: #9D5CFF; }
+    .stat-card.offline .stat-value { color: #483860; }
+    .stat-card.total .stat-value { color: #c8a0ff; }
+    .stat-card.sessions .stat-value { color: #6840B0; }
+
+    .user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+
+    .user-card {
+      background: #0a0016;
+      border: 1px solid #1a0828;
+      border-radius: 12px;
+      padding: 16px 18px;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .user-card:hover { border-color: #2a1040; background: #0e001a; }
+    .user-card.online { border-left: 3px solid #9D5CFF; }
+    .user-card.offline { border-left: 3px solid #1a0828; opacity: 0.6; }
+    .user-card.offline:hover { opacity: 0.8; }
+
+    .avatar {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; flex-shrink: 0; position: relative;
+    }
+
+    .user-card.online .avatar { background: linear-gradient(135deg, #9D5CFF33, #9D5CFF11); color: #9D5CFF; border: 1px solid #9D5CFF44; }
+    .user-card.offline .avatar { background: #12001a; color: #403050; border: 1px solid #1a0828; }
+
+    .avatar .online-dot {
+      position: absolute; bottom: -2px; right: -2px;
+      width: 10px; height: 10px; border-radius: 50%; border: 2px solid #0a0016;
+    }
+    .avatar .online-dot.online { background: #9D5CFF; box-shadow: 0 0 6px #9D5CFF88; }
+    .avatar .online-dot.offline { background: #2a1040; }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-info .name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+    .user-info .name { font-size: 14px; font-weight: 600; color: #f0e8f8; }
+    .user-info .name.offline { color: #605080; }
+
+    .user-info .meta {
+      font-size: 11px; color: #403050;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .user-info .meta span { display: flex; align-items: center; gap: 3px; }
+    .user-info .meta .sep { color: #1a0828; }
+
+    .status-tag { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 4px; }
+    .status-tag.online { background: #9D5CFF18; color: #9D5CFF; }
+    .status-tag.offline { background: #1a0828; color: #483860; }
+
+    .user-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .user-actions button {
+      background: transparent; border: 1px solid #1a0828; border-radius: 6px;
+      padding: 4px 8px; color: #403050; font-size: 11px; cursor: pointer; transition: all 0.2s;
+    }
+    .user-actions button:hover { border-color: #2a1040; color: #a06080; }
+    .user-actions .delete-btn:hover { border-color: #9D5CFF44; color: #9D5CFF; }
+
+    .session-grid { display: grid; gap: 8px; }
+
+    .session-row {
+      background: #0a0016;
+      border: 1px solid #1a0828;
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: 160px 1fr 120px 120px 100px;
+      gap: 12px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .session-row .session-user { font-weight: 600; color: #c8a0ff; }
+    .session-row .session-token {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11px;
+      color: #504068;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .session-row .session-time { color: #605080; font-size: 12px; }
+    .session-row .session-duration { color: #9D5CFF; font-weight: 600; }
+    .session-row .session-status { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 4px; }
+    .session-row .session-status.active { background: #9D5CFF18; color: #9D5CFF; }
+    .session-row .session-status.closed { background: #1a0828; color: #483860; }
+    .session-row .session-ip { font-family: monospace; color: #504068; font-size: 12px; }
+
+    .session-header {
+      display: grid;
+      grid-template-columns: 160px 1fr 120px 120px 100px;
+      gap: 12px;
+      padding: 8px 18px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #403050;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pagination button {
+      background: #0a0016;
+      border: 1px solid #1a0828;
+      border-radius: 6px;
+      padding: 6px 14px;
+      color: #605080;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pagination button:hover { border-color: #9D5CFF; color: #9D5CFF; }
+    .pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .empty-state { text-align: center; padding: 80px 20px; color: #1a0828; }
+    .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.3; }
+    .empty-state h3 { font-size: 16px; margin-bottom: 6px; color: #302040; font-weight: 500; }
+    .empty-state p { font-size: 13px; color: #1a0828; }
+
+    .loading { text-align: center; padding: 60px; color: #403050; }
+    .loading .spinner {
+      width: 32px; height: 32px; border: 2px solid #1a0828; border-top-color: #9D5CFF;
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer-bar {
+      padding: 12px 28px; border-top: 1px solid #1a0828;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; color: #1a0828; background: #0a0016;
+    }
+    .footer-bar .status-led { display: flex; align-items: center; gap: 6px; }
+    .footer-bar .led { width: 6px; height: 6px; border-radius: 50%; background: #9D5CFF; box-shadow: 0 0 6px #9D5CFF66; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .session-row { grid-template-columns: 1fr; }
+      .session-header { display: none; }
+    }
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .user-grid { grid-template-columns: 1fr; }
+      .content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-dot"></div>
+    <span>NIGHT CLIENT</span>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-item active" data-view="dashboard"><span class="icon">&#9679;</span> Dashboard</div>
+    <div class="nav-item" data-view="sessions"><span class="icon">&#9679;</span> Sessions</div>
+  </div>
+  <div class="sidebar-stats">
+    <div class="mini-stat online">
+      <div class="num" id="sOnlineCount">-</div>
+      <div class="lbl">Online</div>
+    </div>
+    <div class="mini-stat offline">
+      <div class="num" id="sOfflineCount">-</div>
+      <div class="lbl">Offline</div>
+    </div>
+    <div class="mini-stat total" style="grid-column:1/3">
+      <div class="num" id="sTotalCount">-</div>
+      <div class="lbl">Total Tracked</div>
+    </div>
+  </div>
+</div>
+
+<div class="main-content">
+  <div class="topbar">
+    <h2 id="topbarTitle">Dashboard <span>live</span></h2>
+    <div class="filter-group" id="filterGroup">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="online">Online</button>
+      <button class="filter-btn" data-filter="offline">Offline</button>
+    </div>
+    <input type="text" class="search-box" id="searchBox" placeholder="Search...">
+    <button class="refresh-btn" id="refreshBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      Refresh
+    </button>
+  </div>
+
+  <div class="content">
+    <div id="dashboardView" class="view active">
+      <div class="stats-row">
+        <div class="stat-card online"><div class="stat-label">Online Now</div><div class="stat-value" id="onlineCount">-</div></div>
+        <div class="stat-card offline"><div class="stat-label">Offline</div><div class="stat-value" id="offlineCount">-</div></div>
+        <div class="stat-card total"><div class="stat-label">Total Users</div><div class="stat-value" id="totalCount">-</div></div>
+        <div class="stat-card sessions"><div class="stat-label">Server Uptime</div><div class="stat-value" id="uptimeCount">-</div></div>
+      </div>
+      <div class="user-grid" id="userGrid"><div class="loading"><div class="spinner"></div>Loading players...</div></div>
+    </div>
+
+    <div id="sessionsView" class="view">
+      <div class="session-header">
+        <div>User</div>
+        <div>Session Token</div>
+        <div>IP</div>
+        <div>Time</div>
+        <div>Status</div>
+      </div>
+      <div class="session-grid" id="sessionGrid"><div class="loading"><div class="spinner"></div>Loading sessions...</div></div>
+      <div class="pagination" id="sessionPagination"></div>
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <div class="status-led"><div class="led"></div> Live</div>
+    <div id="lastUpdated">Waiting for data...</div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = window.location.origin + "/api";
+  let currentFilter = "all";
+  let searchQuery = "";
+  let users = [];
+  let currentView = "dashboard";
+  let sessionPage = 0;
+  const SESSION_LIMIT = 50;
+
+  const searchBox = document.getElementById("searchBox");
+  const userGrid = document.getElementById("userGrid");
+  const sessionGrid = document.getElementById("sessionGrid");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const filterBtns = document.querySelectorAll(".filter-btn");
+  const navItems = document.querySelectorAll(".nav-item");
+
+  searchBox.addEventListener("input", (e) => { searchQuery = e.target.value.toLowerCase(); renderCurrentView(); });
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      filterBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilter = btn.dataset.filter;
+      renderCurrentView();
+    });
+  });
+
+  navItems.forEach(item => {
+    item.addEventListener("click", () => {
+      navItems.forEach(n => n.classList.remove("active"));
+      item.classList.add("active");
+      currentView = item.dataset.view;
+      document.getElementById("dashboardView").classList.toggle("active", currentView === "dashboard");
+      document.getElementById("sessionsView").classList.toggle("active", currentView === "sessions");
+      document.getElementById("filterGroup").style.display = currentView === "dashboard" ? "flex" : "none";
+      document.getElementById("topbarTitle").innerHTML = currentView === "dashboard" ? 'Dashboard <span>live</span>' : 'Sessions <span>history</span>';
+      renderCurrentView();
+    });
+  });
+
+  refreshBtn.addEventListener("click", () => { fetchUsers(); fetchSessions(); });
+
+  function renderCurrentView() {
+    if (currentView === "dashboard") renderUsers();
+    else renderSessions();
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return "never";
+    const diff = Date.now() - new Date(iso).getTime();
+    const sec = Math.floor(diff / 1000);
+    if (sec < 5) return "just now";
+    if (sec < 60) return sec + "s ago";
+    const min = Math.floor(sec / 60);
+    if (min < 60) return min + "m ago";
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + "h " + (min % 60) + "m ago";
+    return Math.floor(hr / 24) + "d ago";
+  }
+
+  function formatDuration(secs) {
+    if (!secs || secs < 0) return "-";
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return h + "h " + m + "m";
+    if (m > 0) return m + "m " + s + "s";
+    return s + "s";
+  }
+
+  function formatTime(iso) {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function getInitials(name) { return name ? name.charAt(0).toUpperCase() : "?"; }
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch(API_BASE + "/users");
+      const data = await res.json();
+      users = data.users;
+      document.getElementById("onlineCount").textContent = data.stats.online;
+      document.getElementById("offlineCount").textContent = data.stats.offline;
+      document.getElementById("totalCount").textContent = data.stats.total;
+      document.getElementById("sOnlineCount").textContent = data.stats.online;
+      document.getElementById("sOfflineCount").textContent = data.stats.offline;
+      document.getElementById("sTotalCount").textContent = data.stats.total;
+      fetch(API_BASE + "/stats").then(r => r.json()).then(s => {
+        document.getElementById("uptimeCount").textContent = Math.floor(s.serverUptime / 3600) + "h " + Math.floor((s.serverUptime % 3600) / 60) + "m";
+      }).catch(() => {});
+      document.getElementById("lastUpdated").textContent = "Updated " + timeAgo(new Date().toISOString());
+      if (currentView === "dashboard") renderUsers();
+    } catch (err) {
+      userGrid.innerHTML = '<div class="empty-state"><h3>Connection Error</h3><p>Could not reach the tracker server.</p></div>';
+    }
+  }
+
+  async function fetchSessions() {
+    try {
+      const offset = sessionPage * SESSION_LIMIT;
+      const res = await fetch(API_BASE + "/sessions?limit=" + SESSION_LIMIT + "&offset=" + offset);
+      const data = await res.json();
+      window._sessionsData = data;
+      if (currentView === "sessions") renderSessions();
+    } catch (err) {
+      sessionGrid.innerHTML = '<div class="empty-state"><h3>Connection Error</h3><p>Could not load sessions.</p></div>';
+    }
+  }
+
+  function renderUsers() {
+    let filtered = users;
+    if (currentFilter !== "all") filtered = filtered.filter(u => u.status === currentFilter);
+    if (searchQuery) filtered = filtered.filter(u => (u.username || "").toLowerCase().includes(searchQuery));
+    if (filtered.length === 0) {
+      userGrid.innerHTML = '<div class="empty-state"><h3>No Users Found</h3><p>Waiting for players to connect...</p></div>';
+      return;
+    }
+    userGrid.innerHTML = filtered.map(u => {
+      const isOn = u.status === "online";
+      return `<div class="user-card ${isOn ? "online" : "offline"}">
+        <div class="avatar ${isOn ? "online" : "offline"}">${getInitials(u.username)}<div class="online-dot ${isOn ? "online" : "offline"}"></div></div>
+        <div class="user-info">
+          <div class="name-row">
+            <div class="name ${isOn ? "" : "offline"}">${escapeHtml(u.username || "Unknown")}</div>
+            <div class="status-tag ${isOn ? "online" : "offline"}">${isOn ? "Live" : "Offline"}</div>
+          </div>
+          <div class="meta">
+            <span>MC ${escapeHtml(u.mcVersion || "?")}</span>
+            <span class="sep">&#183;</span>
+            <span>${u.totalConnections || 0} connection${u.totalConnections !== 1 ? "s" : ""}</span>
+            <span class="sep">&#183;</span>
+            <span>${timeAgo(u.lastSeen)}</span>
+            ${u.ip ? '<span class="sep">&#183;</span><span>' + escapeHtml(u.ip) + '</span>' : ''}
+          </div>
+        </div>
+        <div class="user-actions"><button class="delete-btn" onclick="deleteUser('${escapeHtml(u.id || u.username)}')">X</button></div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderSessions() {
+    const data = window._sessionsData;
+    if (!data || !data.sessions) {
+      sessionGrid.innerHTML = '<div class="loading"><div class="spinner"></div>Loading sessions...</div>';
+      return;
+    }
+    let filtered = data.sessions;
+    if (searchQuery) filtered = filtered.filter(s => (s.username || "").toLowerCase().includes(searchQuery));
+    if (filtered.length === 0) {
+      sessionGrid.innerHTML = '<div class="empty-state"><h3>No Sessions</h3><p>Session history will appear here.</p></div>';
+      return;
+    }
+    sessionGrid.innerHTML = filtered.map(s => {
+      const token = s.mc_session_token || "-";
+      const tokenDisplay = token.length > 32 ? token.substring(0, 32) + "..." : token;
+      const dur = s.status === "active" ? Math.floor((Date.now() - new Date(s.connect_time).getTime()) / 1000) : s.duration;
+      return `<div class="session-row">
+        <div class="session-user">${escapeHtml(s.username)}</div>
+        <div class="session-token" title="${escapeHtml(token)}">${escapeHtml(tokenDisplay)}</div>
+        <div class="session-ip">${escapeHtml(s.ip || "-")}</div>
+        <div class="session-time">${formatTime(s.connect_time)}${s.disconnect_time ? ' - ' + formatTime(s.disconnect_time) : ''}</div>
+        <div class="session-status ${s.status}">${s.status === "active" ? "Active" : formatDuration(dur)}</div>
+      </div>`;
+    }).join("");
+
+    const totalPages = Math.ceil(data.total / SESSION_LIMIT);
+    const pag = document.getElementById("sessionPagination");
+    if (totalPages <= 1) { pag.innerHTML = ""; return; }
+    pag.innerHTML = `<button onclick="sessionPage=Math.max(0,sessionPage-1);fetchSessions()" ${sessionPage === 0 ? "disabled" : ""}>&#8249; Prev</button>
+      <span style="color:#504068;font-size:12px;display:flex;align-items:center;">${sessionPage + 1} / ${totalPages}</span>
+      <button onclick="sessionPage=Math.min(${totalPages-1},sessionPage+1);fetchSessions()" ${sessionPage >= totalPages - 1 ? "disabled" : ""}>Next &#8250;</button>`;
+  }
+
+  async function deleteUser(id) {
+    if (!confirm("Remove " + id + " from tracker?")) return;
+    try { await fetch(API_BASE + "/user/" + encodeURIComponent(id), { method: "DELETE" }); fetchUsers(); } catch (e) {}
+  }
+
+  fetchUsers();
+  fetchSessions();
+  setInterval(() => { fetchUsers(); fetchSessions(); }, 5000);
+</script>
+
+</body>
+</html>
