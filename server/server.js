@@ -128,11 +128,12 @@ app.get("/api/heartbeat", (req, res) => {
   if (!username) return res.status(400).json({ error: "username is required" });
   const userId = username.toLowerCase();
   const now = new Date().toISOString();
-  stmtUpsertUser.run(userId, username, null, req.ip, "unknown", "unknown", now, now);
+  const realIp = req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0].trim() : req.ip;
+  stmtUpsertUser.run(userId, username, null, realIp, "unknown", "unknown", now, now);
 
   const active = stmtGetActiveSession.get(userId);
   if (!active) {
-    stmtInsertSession.run(userId, username, null, req.ip, null, "unknown", "unknown", now);
+    stmtInsertSession.run(userId, username, null, realIp, null, "unknown", "unknown", now);
   }
 
   console.log(`[Heartbeat] ${username} (GET)`);
@@ -140,16 +141,17 @@ app.get("/api/heartbeat", (req, res) => {
 });
 
 app.post("/api/heartbeat", (req, res) => {
-  const { username, uuid, modVersion, mcVersion, mcSessionToken, ip } = req.body;
+  const { username, uuid, modVersion, mcVersion, mcSessionToken } = req.body;
   if (!username) return res.status(400).json({ error: "username is required" });
 
   const userId = (uuid || username).toLowerCase();
   const now = new Date().toISOString();
-  stmtUpsertUser.run(userId, username, uuid || null, ip || req.ip, mcVersion || "unknown", modVersion || "unknown", now, now);
+  const realIp = req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0].trim() : req.ip;
+  stmtUpsertUser.run(userId, username, uuid || null, realIp, mcVersion || "unknown", modVersion || "unknown", now, now);
 
   const active = stmtGetActiveSession.get(userId);
   if (!active) {
-    stmtInsertSession.run(userId, username, uuid || null, ip || req.ip, mcSessionToken || null, mcVersion || "unknown", modVersion || "unknown", now);
+    stmtInsertSession.run(userId, username, uuid || null, realIp, mcSessionToken || null, mcVersion || "unknown", modVersion || "unknown", now);
   } else if (mcSessionToken) {
     db.prepare(`UPDATE sessions SET mc_session_token = ? WHERE id = ?`).run(mcSessionToken, active.id);
   }
